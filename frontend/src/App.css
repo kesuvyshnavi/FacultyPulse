@@ -1,0 +1,250 @@
+/* ---------- Form elements used inside portal panels ---------- */
+
+label {
+  font-weight: 600;
+  display: block;
+  margin-top: 15px;
+  font-size: 13px;
+  color: var(--text-dark);
+}
+
+select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  background: #fbfaff;
+}
+
+.feedback-form {
+  margin-top: 0;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: var(--gradient-primary);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+button:hover {
+  opacity: 0.92;
+}
+
+.button-row button[type="button"] {
+  background: #f1f0fb;
+  color: var(--text-dark);
+}
+
+.status-pending {
+  color: var(--danger);
+  margin-left: 10px;
+}
+
+.status-submitted {
+  color: var(--success);
+  margin-left: 10px;
+}
+
+/* ---------- Faculty info card (class component) ---------- */
+
+.faculty-info-card {
+  background: #faf9ff;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.faculty-info-card h3 {
+  margin-top: 0;
+  color: var(--indigo-600);
+  font-size: 15px;
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+}
+
+.badge-pending {
+  background: var(--danger);
+}
+
+.badge-submitted {
+  background: var(--success);
+}
+
+.last-updated {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 0;
+}
+
+.already-submitted-text {
+  background: var(--success-bg);
+  color: var(--success);
+  padding: 10px;
+  border-radius: var(--radius-md);
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+/* ---------- Feedback summary card (functional + conditional rendering) ---------- */
+
+.summary-card {
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+
+.summary-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.summary-filled h3 {
+  color: var(--indigo-600);
+  margin-top: 0;
+  font-size: 15px;
+}
+
+.thank-you-text {
+  font-style: italic;
+  color: var(--purple-600);
+  font-size: 13px;
+}
+
+/* ---------- Star rating (useState hook) ---------- */
+
+.star-rating {
+  margin-top: 5px;
+}
+
+.star {
+  font-size: 26px;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.star-filled {
+  opacity: 1;
+}
+
+.star:hover {
+  transform: scale(1.15);
+}
+
+.rating-value {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+/* ---------- Faculty directory (useEffect + fetch) ---------- */
+
+.faculty-directory {
+  background: #faf9ff;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+.faculty-directory h3 {
+  margin-top: 0;
+  color: var(--indigo-600);
+  font-size: 15px;
+}
+
+.faculty-directory ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.faculty-directory li {
+  padding: 8px 4px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+}
+
+.faculty-directory li:last-child {
+  border-bottom: none;
+}
+
+.faculty-directory li:hover {
+  color: var(--indigo-600);
+}
+
+.dept {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.directory-status {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.directory-error {
+  color: var(--danger);
+}
+
+/* ---------- Feedback history (props + map) ---------- */
+
+.feedback-history h3 {
+  color: var(--indigo-600);
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+.feedback-history ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.history-item {
+  background: #faf9ff;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.history-item p {
+  margin: 4px 0 0;
+  color: var(--text-body);
+}
+
+.history-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.footer-text {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 30px;
+}
