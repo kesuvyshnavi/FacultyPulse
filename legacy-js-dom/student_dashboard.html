@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FacultyPulse - Student Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+    <h1 id="title">FacultyPulse</h1>
+    <h2 class="heading">Student Feedback Dashboard</h2>
+
+    <p id="welcome">Welcome, Student</p>
+
+    <label>Faculty</label>
+    <select id="faculty">
+        <option>Dr. Ramesh</option>
+        <option>Dr. Priya Menon</option>
+        <option>Dr. Suresh Kumar</option>
+    </select>
+
+    <label>Subject</label>
+    <select id="subject">
+        <option>Full Stack Development</option>
+        <option>Java Programming</option>
+        <option>Python Programming</option>
+    </select>
+
+    <label>Comments</label>
+    <textarea id="comments" placeholder="Enter your feedback"></textarea>
+
+    <h3>Status :
+        <span id="status">Pending</span>
+    </h3>
+
+    <p id="message">
+        Waiting for your valuable feedback...
+    </p>
+
+    <button id="submitBtn">Submit Feedback</button>
+    <button onclick="viewStatus()">View Status</button>
+    <button onclick="resetForm()">Reset</button>
+    <button onclick="showFunctions()">Function Demo</button>
+
+</div>
+
+<script src="dashboard.js"></script>
+
+</body>
+</html>
