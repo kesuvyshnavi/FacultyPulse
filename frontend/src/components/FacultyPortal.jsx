@@ -1,7 +1,24 @@
 import { useState } from "react";
-import { LayoutDashboard, MessageCircle, FileBarChart, Star, Users, TrendingUp } from "lucide-react";
+import {
+  LayoutDashboard,
+  MessageCircle,
+  FileBarChart,
+  Star,
+  Users,
+  TrendingUp,
+  BookOpen,
+} from "lucide-react";
+import {
+  FEEDBACK_CATEGORIES,
+  COMMENT_FIELDS,
+  categoryScores,
+  scoreOf,
+  overallRatingAverage,
+  formatScore,
+} from "../data";
 import Sidebar from "./Sidebar";
 import StatCard from "./StatCard";
+import CategoryBars from "./CategoryBars";
 
 const NAV_ITEMS = [
   { key: "overview", label: "Dashboard", icon: LayoutDashboard },
@@ -18,26 +35,37 @@ function sentimentFromRating(rating) {
 // Faculty Portal — reuses the same Sidebar + StatCard building blocks, but
 // every number here is derived from the `submissions` array lifted in
 // App.jsx, filtered down to feedback aimed at this logged-in faculty
-// member. Nothing shown is mock data anymore.
-function FacultyPortal({ user, onLogout, submissions=[] }) {
+// member, using the same category structure the students filled in.
+function FacultyPortal({ user, onLogout, submissions }) {
   const [tab, setTab] = useState("overview");
 
   const myFeedback = submissions.filter((s) => s.faculty === user.name);
   const totalResponses = myFeedback.length;
-  const avgRating = totalResponses
-    ? (myFeedback.reduce((sum, f) => sum + f.rating, 0) / totalResponses).toFixed(2)
-    : null;
+  const avgScore = totalResponses ? scoreOf(myFeedback) : null;
+  const avgOverall = totalResponses ? overallRatingAverage(myFeedback) : null;
+  const categories = categoryScores(myFeedback);
 
-  // (3e) map() over a fixed 1-5 scale to build a real rating-distribution
-  // bar chart from the actual submissions, instead of invented numbers.
+  // (3e) map() over a fixed 1-5 scale to build a rating-distribution bar
+  // chart from the students' overall star ratings.
   const distribution = [1, 2, 3, 4, 5].map((star) => ({
     star,
-    count: myFeedback.filter((f) => f.rating === star).length,
+    count: myFeedback.filter((f) => f.overallRating === star).length,
   }));
   const maxCount = Math.max(1, ...distribution.map((d) => d.count));
 
-  // Group by subject to show a per-subject average in Reports.
   const subjectsTaught = [...new Set(myFeedback.map((f) => f.subject))];
+  const perSubject = subjectsTaught.map((subject) => {
+    const list = myFeedback.filter((f) => f.subject === subject);
+    return {
+      subject,
+      list,
+      scores: categoryScores(list),
+      avg: scoreOf(list),
+      overall: overallRatingAverage(list),
+    };
+  });
+
+  const withComments = myFeedback.filter((f) => COMMENT_FIELDS.some((field) => f[field.key]));
 
   return (
     <div className="portal-shell">
@@ -62,17 +90,27 @@ function FacultyPortal({ user, onLogout, submissions=[] }) {
         {tab === "overview" && (
           <>
             <div className="stat-grid">
-              <StatCard icon={Star} label="Average Rating" value={avgRating ? `${avgRating} / 5` : "—"} tone="success" />
+              <StatCard icon={Star} label="Average Score" value={avgScore ? `${formatScore(avgScore)} / 5` : "—"} tone="success" />
+              <StatCard icon={TrendingUp} label="Overall Rating" value={avgOverall ? `${formatScore(avgOverall)} / 5` : "—"} />
               <StatCard icon={Users} label="Total Responses" value={totalResponses} />
-              <StatCard icon={TrendingUp} label="Subjects Reviewed" value={subjectsTaught.length} tone="warning" />
+              <StatCard icon={BookOpen} label="Subjects Reviewed" value={subjectsTaught.length} tone="warning" />
             </div>
 
             <div className="panel">
-              <h3>Rating distribution</h3>
+              <h3>Performance by category</h3>
               {totalResponses === 0 ? (
                 <p className="panel-muted">
                   No feedback yet — this fills in as students submit reviews.
                 </p>
+              ) : (
+                <CategoryBars scores={categories} />
+              )}
+            </div>
+
+            <div className="panel">
+              <h3>Overall star rating distribution</h3>
+              {totalResponses === 0 ? (
+                <p className="panel-muted">No ratings yet.</p>
               ) : (
                 <div className="bar-chart">
                   {distribution.map((d) => (
@@ -94,18 +132,24 @@ function FacultyPortal({ user, onLogout, submissions=[] }) {
         {tab === "comments" && (
           <div className="panel">
             <h3>Student Comments</h3>
-            {myFeedback.length === 0 ? (
+            {withComments.length === 0 ? (
               <p className="panel-muted">No comments submitted yet.</p>
             ) : (
               <div className="comment-list">
-                {myFeedback.map((f, index) => {
-                  const sentiment = sentimentFromRating(f.rating);
+                {withComments.map((f, index) => {
+                  const sentiment = sentimentFromRating(f.overallRating);
                   return (
-                    <div className="comment-item" key={index}>
-                      <span>
-                        <strong>{f.subject}:</strong> {f.comments}
-                      </span>
-                      <span className={`pill ${sentiment.pillClass}`}>{sentiment.label}</span>
+                    <div className="feedback-comment" key={index}>
+                      <div className="feedback-comment-head">
+                        <strong>{f.subject}</strong>
+                        <span className={`pill ${sentiment.pillClass}`}>{sentiment.label}</span>
+                      </div>
+                      {COMMENT_FIELDS.filter((field) => f[field.key]).map((field) => (
+                        <div className="comment-block" key={field.key}>
+                          <span className="comment-label">{field.short}</span>
+                          <p>{f[field.key]}</p>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
@@ -115,37 +159,67 @@ function FacultyPortal({ user, onLogout, submissions=[] }) {
         )}
 
         {tab === "reports" && (
-          <div className="panel">
-            <h3>Subject-wise summary</h3>
-            {subjectsTaught.length === 0 ? (
-              <p className="panel-muted">No submissions yet to summarize.</p>
-            ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Subject</th>
-                    <th>Responses</th>
-                    <th>Average Rating</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subjectsTaught.map((subject) => {
-                    const forSubject = myFeedback.filter((f) => f.subject === subject);
-                    const avg = (
-                      forSubject.reduce((sum, f) => sum + f.rating, 0) / forSubject.length
-                    ).toFixed(2);
-                    return (
-                      <tr key={subject}>
-                        <td>{subject}</td>
-                        <td>{forSubject.length}</td>
-                        <td>{avg} / 5</td>
+          <>
+            <div className="panel">
+              <h3>Subject-wise summary</h3>
+              {perSubject.length === 0 ? (
+                <p className="panel-muted">No submissions yet to summarize.</p>
+              ) : (
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Subject</th>
+                      <th>Responses</th>
+                      <th>Average Score</th>
+                      <th>Overall Rating</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {perSubject.map((p) => (
+                      <tr key={p.subject}>
+                        <td>{p.subject}</td>
+                        <td>{p.list.length}</td>
+                        <td>{formatScore(p.avg)} / 5</td>
+                        <td>{formatScore(p.overall)} / 5</td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {perSubject.length > 0 && (
+              <div className="panel">
+                <h3>Category-wise breakdown</h3>
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Category</th>
+                        {perSubject.map((p) => (
+                          <th key={p.subject}>{p.subject}</th>
+                        ))}
+                        <th>All subjects</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {FEEDBACK_CATEGORIES.map((category, i) => (
+                        <tr key={category.key}>
+                          <td>{category.title}</td>
+                          {perSubject.map((p) => (
+                            <td key={p.subject}>{formatScore(p.scores[i].avg)}</td>
+                          ))}
+                          <td>
+                            <strong>{formatScore(categories[i].avg)}</strong>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
-          </div>
+          </>
         )}
       </main>
     </div>

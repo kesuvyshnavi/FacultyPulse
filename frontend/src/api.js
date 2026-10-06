@@ -29,10 +29,28 @@ export const api = {
 
   fetchUsers: () => request("/users"),
 
-  registerUser: (name, role) =>
-    request("/users/register", { method: "POST", body: JSON.stringify({ name, role }) }),
+  // payload: { name, role, department?, program?, year? } — department/
+  // program/year only matter when role === "student".
+  registerUser: (payload) =>
+    request("/users/register", { method: "POST", body: JSON.stringify(payload) }),
+
+  // payload: any subset of { department, program, year } — only sent
+  // fields are changed. Used both to fill in missing details on an older
+  // account and for the yearly "promote to next year" edit.
+  updateStudent: (id, payload) =>
+    request(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+
+  deleteUser: (id) => request(`/users/${id}`, { method: "DELETE" }),
 
   fetchSubjects: () => request("/subjects"),
+
+  // Replaces a faculty member's entire subject assignment with the given
+  // list of subject IDs — used by the Admin portal's "Edit subjects" panel.
+  updateFacultySubjects: (facultyName, subjectIds) =>
+    request("/subjects/faculty-assignments", {
+      method: "PUT",
+      body: JSON.stringify({ facultyName, subjectIds }),
+    }),
 
   fetchFeedback: () => request("/feedback"),
 

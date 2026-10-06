@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   MessageSquarePlus,
@@ -10,12 +10,13 @@ import {
   ChevronRight,
   CircleUserRound,
 } from "lucide-react";
-import { SUBJECTS } from "../data";
+import { api } from "../api";
+import { reviewKey, submissionScore, formatScore } from "../data";
 import Sidebar from "./Sidebar";
 import StatCard from "./StatCard";
 import FacultyInfoCard from "./FacultyInfoCard";
 import FeedbackSummaryCard from "./FeedbackSummaryCard";
-import StarRating from "./StarRating";
+import FeedbackForm from "./FeedbackForm";
 import FacultyDirectory from "./FacultyDirectory";
 import FeedbackHistory from "./FeedbackHistory";
 
@@ -25,24 +26,49 @@ const NAV_ITEMS = [
   { key: "history", label: "My Feedback", icon: HistoryIcon },
 ];
 
-// Student Portal — the main functional dashboard component. Composes every
-// smaller component and owns the wizard state (2c: button click events,
-// 3d: forms, 3a: useState, 3c: props, 3e: map() all live here). Feedback
-// this student submits is lifted to App.jsx via onSubmitFeedback, which is
-// what makes it show up for real in the Faculty and Admin portals.
-function StudentPortal({ user, onLogout, submissions=[], onSubmitFeedback }) {
+// Student Portal — the main functional dashboard component. It owns the
+// wizard state (subject -> faculty -> multi-step form). Subjects (and who
+// teaches each one) are fetched from the API rather than hardcoded, since
+// the HOD can reassign a faculty member to a different subject any
+// semester from the Admin portal — this way a reassignment shows up here
+// immediately. The form itself lives in FeedbackForm.jsx; when it
+// finishes, the answers are lifted to App.jsx via onSubmitFeedback, which
+// is what makes them show up for real in the Faculty and Admin portals.
+function StudentPortal({ user, onLogout, submissions, onSubmitFeedback }) {
   const [tab, setTab] = useState("overview");
+
+  const [subjects, setSubjects] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [subjectsError, setSubjectsError] = useState("");
 
   const [step, setStep] = useState("subjects"); // "subjects" | "faculty" | "form"
   const [activeSubjectId, setActiveSubjectId] = useState(null);
   const [activeFaculty, setActiveFaculty] = useState(null);
-  const [rating, setRating] = useState(0);
-  const [comments, setComments] = useState("");
-  const [formError, setFormError] = useState("");
 
+  function loadSubjects() {
+    setLoadingSubjects(true);
+    setSubjectsError("");
+    api
+      .fetchSubjects()
+      .then((data) => {
+        setSubjects(data);
+        setLoadingSubjects(false);
+      })
+      .catch((err) => {
+        setSubjectsError(err.message);
+        setLoadingSubjects(false);
+      });
+  }
+
+  useEffect(() => {
+    loadSubjects();
+  }, []);
+
+  const totalReviews = subjects.reduce((sum, s) => sum + s.faculty.length, 0);
   const myHistory = submissions.filter((s) => s.studentId === user.id);
-  const activeSubject = SUBJECTS.find((s) => s.id === activeSubjectId);
-  const completedIds = new Set(myHistory.map((h) => h.subjectId));
+  const activeSubject = subjects.find((s) => s.id === activeSubjectId);
+  // One review = one faculty for one subject.
+  const completedKeys = new Set(myHistory.map((h) => reviewKey(h.subjectId, h.faculty)));
 
   function openSubject(subject) {
     setActiveSubjectId(subject.id);
@@ -51,9 +77,6 @@ function StudentPortal({ user, onLogout, submissions=[], onSubmitFeedback }) {
 
   function chooseFaculty(name) {
     setActiveFaculty(name);
-    setRating(0);
-    setComments("");
-    setFormError("");
     setStep("form");
   }
 
@@ -66,32 +89,19 @@ function StudentPortal({ user, onLogout, submissions=[], onSubmitFeedback }) {
   function backToFaculty() {
     setStep("faculty");
     setActiveFaculty(null);
-    setFormError("");
   }
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (rating === 0) {
-      setFormError("Please select a rating before submitting.");
-      return;
-    }
-    if (comments.trim() === "") {
-      setFormError("Please add a comment before submitting.");
-      return;
-    }
-
+  function handleFormSubmit(formData) {
     onSubmitFeedback({
       subjectId: activeSubject.id,
       subject: activeSubject.name,
       faculty: activeFaculty,
       studentId: user.id,
       studentName: user.name,
-      rating,
-      comments,
+      ...formData, // answers, overallRating, strengths, improvements, suggestions
       submittedAt: new Date().toISOString(),
     });
 
-    setFormError("");
     setTab("history");
     setStep("subjects");
     setActiveSubjectId(null);
@@ -123,121 +133,127 @@ function StudentPortal({ user, onLogout, submissions=[], onSubmitFeedback }) {
           </div>
         </div>
 
-        {tab === "overview" && (
+        {loadingSubjects && <p className="panel-muted">Loading subjects...</p>}
+        {subjectsError && <p className="form-error">{subjectsError}</p>}
+
+        {!loadingSubjects && !subjectsError && (
           <>
-            <div className="stat-grid">
-              <StatCard icon={ClipboardList} label="Pending Subjects" value={SUBJECTS.length - completedIds.size} tone="warning" />
-              <StatCard icon={CheckCircle2} label="Completed" value={completedIds.size} tone="success" />
-              <StatCard icon={BookOpen} label="Total Subjects" value={SUBJECTS.length} />
-            </div>
+            {tab === "overview" && (
+              <>
+                <div className="stat-grid">
+                  <StatCard icon={ClipboardList} label="Pending Reviews" value={totalReviews - completedKeys.size} tone="warning" />
+                  <StatCard icon={CheckCircle2} label="Completed" value={completedKeys.size} tone="success" />
+                  <StatCard icon={BookOpen} label="Total Reviews" value={totalReviews} />
+                </div>
 
-            <FeedbackDashboardPanel history={myHistory} />
-            <FacultyDirectory />
-          </>
-        )}
+                <FeedbackDashboardPanel subjects={subjects} completedKeys={completedKeys} totalReviews={totalReviews} />
+                <FacultyDirectory subjects={subjects} />
+              </>
+            )}
 
-        {tab === "feedback" && step === "subjects" && (
-          <div className="panel">
-            <h3>Choose a subject</h3>
-            <div className="subject-grid">
-              {SUBJECTS.map((subject) => {
-                const done = completedIds.has(subject.id);
-                return (
-                  <button
-                    key={subject.id}
-                    className={`subject-card ${done ? "subject-card-done" : ""}`}
-                    onClick={() => openSubject(subject)}
-                  >
-                    <div className="subject-card-icon">
-                      <BookOpen size={18} />
-                    </div>
-                    <div className="subject-card-body">
-                      <div className="subject-card-name">{subject.name}</div>
-                      <div className="subject-card-meta">
-                        {subject.faculty.length} faculty teaching this subject
-                      </div>
-                    </div>
-                    {done ? (
-                      <span className="pill pill-success">Submitted</span>
-                    ) : (
-                      <ChevronRight size={18} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {tab === "feedback" && step === "faculty" && activeSubject && (
-          <div className="panel">
-            <button className="wizard-back" onClick={backToSubjects}>
-              <ArrowLeft size={15} /> Back to subjects
-            </button>
-            <h3>{activeSubject.name} — choose faculty</h3>
-            <p className="panel-muted">
-              This subject is taught by more than one faculty member. Pick
-              the one you want to review.
-            </p>
-            <div className="subject-grid">
-              {activeSubject.faculty.map((name) => (
-                <button key={name} className="subject-card" onClick={() => chooseFaculty(name)}>
-                  <div className="subject-card-icon">
-                    <CircleUserRound size={18} />
-                  </div>
-                  <div className="subject-card-body">
-                    <div className="subject-card-name">{name}</div>
-                    <div className="subject-card-meta">{activeSubject.name}</div>
-                  </div>
-                  <ChevronRight size={18} />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {tab === "feedback" && step === "form" && activeSubject && activeFaculty && (
-          <>
-            <FacultyInfoCard faculty={activeFaculty} subject={activeSubject.name} status="Pending" />
-            <form className="panel feedback-form" onSubmit={handleSubmit}>
-              <button type="button" className="wizard-back" onClick={backToFaculty}>
-                <ArrowLeft size={15} /> Back to faculty list
-              </button>
-              <h3>Rate your experience</h3>
-
-              <label>Rating</label>
-              <StarRating rating={rating} onRatingChange={setRating} />
-
-              <label htmlFor="comments">Comments</label>
-              <textarea
-                id="comments"
-                placeholder="Enter your feedback"
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-              />
-
-              {formError && <p className="form-error">{formError}</p>}
-
-              <div className="button-row">
-                <button type="submit">Submit Feedback</button>
+            {tab === "feedback" && step === "subjects" && (
+              <div className="panel">
+                <h3>Choose a subject</h3>
+                <div className="subject-grid">
+                  {subjects.map((subject) => {
+                    const reviewed = subject.faculty.filter((name) =>
+                      completedKeys.has(reviewKey(subject.id, name))
+                    ).length;
+                    const done = subject.faculty.length > 0 && reviewed === subject.faculty.length;
+                    return (
+                      <button
+                        key={subject.id}
+                        className={`subject-card ${done ? "subject-card-done" : ""}`}
+                        onClick={() => openSubject(subject)}
+                      >
+                        <div className="subject-card-icon">
+                          <BookOpen size={18} />
+                        </div>
+                        <div className="subject-card-body">
+                          <div className="subject-card-name">{subject.name}</div>
+                          <div className="subject-card-meta">
+                            {reviewed} of {subject.faculty.length} faculty reviewed
+                          </div>
+                        </div>
+                        {done ? (
+                          <span className="pill pill-success">Submitted</span>
+                        ) : (
+                          <ChevronRight size={18} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </form>
-          </>
-        )}
+            )}
 
-        {tab === "history" && (
-          <>
-            <div className="panel">
-              <FeedbackSummaryCard
-                faculty={latestEntry?.faculty}
-                subject={latestEntry?.subject}
-                comments={latestEntry?.comments}
-                status={latestEntry ? "Submitted" : "Pending"}
-              />
-            </div>
-            <div className="panel">
-              <FeedbackHistory history={myHistory} />
-            </div>
+            {tab === "feedback" && step === "faculty" && activeSubject && (
+              <div className="panel">
+                <button className="wizard-back" onClick={backToSubjects}>
+                  <ArrowLeft size={15} /> Back to subjects
+                </button>
+                <h3>{activeSubject.name} — choose faculty</h3>
+                <p className="panel-muted">
+                  This subject is taught by more than one faculty member. Pick
+                  the one you want to review.
+                </p>
+                <div className="subject-grid">
+                  {activeSubject.faculty.map((name) => {
+                    const done = completedKeys.has(reviewKey(activeSubject.id, name));
+                    return (
+                      <button
+                        key={name}
+                        className={`subject-card ${done ? "subject-card-done" : ""}`}
+                        disabled={done}
+                        onClick={() => chooseFaculty(name)}
+                      >
+                        <div className="subject-card-icon">
+                          <CircleUserRound size={18} />
+                        </div>
+                        <div className="subject-card-body">
+                          <div className="subject-card-name">{name}</div>
+                          <div className="subject-card-meta">{activeSubject.name}</div>
+                        </div>
+                        {done ? (
+                          <span className="pill pill-success">Submitted</span>
+                        ) : (
+                          <ChevronRight size={18} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {tab === "feedback" && step === "form" && activeSubject && activeFaculty && (
+              <>
+                <FacultyInfoCard faculty={activeFaculty} subject={activeSubject.name} status="Pending" />
+                <FeedbackForm
+                  key={`${activeSubject.id}-${activeFaculty}`}
+                  onSubmit={handleFormSubmit}
+                  onBack={backToFaculty}
+                />
+              </>
+            )}
+
+            {tab === "history" && (
+              <>
+                <div className="panel">
+                  <FeedbackSummaryCard
+                    faculty={latestEntry?.faculty}
+                    subject={latestEntry?.subject}
+                    average={latestEntry ? formatScore(submissionScore(latestEntry)) : null}
+                    overallRating={latestEntry?.overallRating}
+                    strengths={latestEntry?.strengths}
+                    status={latestEntry ? "Submitted" : "Pending"}
+                  />
+                </div>
+                <div className="panel">
+                  <FeedbackHistory history={myHistory} />
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -249,24 +265,26 @@ function StudentPortal({ user, onLogout, submissions=[], onSubmitFeedback }) {
 
 // Small helper panel for the overview tab, kept local to this file since it
 // only makes sense in the context of the student's own feedback progress.
-function FeedbackDashboardPanel({ history }) {
-  const total = SUBJECTS.length;
-  const done = new Set(history.map((h) => h.subjectId)).size;
-  const remaining = SUBJECTS.filter((s) => !history.some((h) => h.subjectId === s.id));
+function FeedbackDashboardPanel({ subjects, completedKeys, totalReviews }) {
+  const remaining = subjects.flatMap((subject) =>
+    subject.faculty.map((name) => ({ subject, name }))
+  ).filter((item) => !completedKeys.has(reviewKey(item.subject.id, item.name)));
 
   return (
     <div className="panel">
       <h3>Feedback progress</h3>
-      {done === total ? (
+      {remaining.length === 0 ? (
         <p className="panel-muted">
-          You've submitted feedback for all {total} subjects this session.
+          You've submitted feedback for all {totalReviews} faculty reviews this session.
         </p>
       ) : (
         <>
-          <p className="panel-muted">Subjects still waiting for your feedback:</p>
+          <p className="panel-muted">Reviews still waiting for your feedback:</p>
           <ul className="plain-list">
-            {remaining.map((s) => (
-              <li key={s.id}>{s.name}</li>
+            {remaining.map((item) => (
+              <li key={reviewKey(item.subject.id, item.name)}>
+                {item.subject.name} — {item.name}
+              </li>
             ))}
           </ul>
         </>

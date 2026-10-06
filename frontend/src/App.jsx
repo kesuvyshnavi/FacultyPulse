@@ -7,8 +7,9 @@ import FacultyPortal from "./components/FacultyPortal";
 import AdminPortal from "./components/AdminPortal";
 
 // The portals read camelCase fields (studentId, subjectId, faculty, subject,
-// rating, comments). If the API returns snake_case column names, this maps
-// them so the portals never see undefined values.
+// answers, overallRating, strengths/improvements/suggestions). If the API
+// returns snake_case column names, this maps them so the portals never see
+// undefined values.
 function normalizeFeedback(row) {
   return {
     ...row,
@@ -17,8 +18,11 @@ function normalizeFeedback(row) {
     faculty: row.faculty ?? row.faculty_name,
     studentId: row.studentId ?? row.student_id,
     studentName: row.studentName ?? row.student_name,
-    rating: Number(row.rating),
-    comments: row.comments ?? "",
+    answers: typeof row.answers === "string" ? JSON.parse(row.answers) : row.answers ?? {},
+    overallRating: Number(row.overallRating ?? row.rating),
+    strengths: row.strengths ?? "",
+    improvements: row.improvements ?? "",
+    suggestions: row.suggestions ?? "",
     submittedAt: row.submittedAt ?? row.submitted_at,
   };
 }
@@ -27,18 +31,25 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [stage, setStage] = useState("login"); // "login" | "changePassword" | "app"
 
-  // Always an array, so portals can safely call .filter/.map on it.
+  // Always arrays, so portals can safely call .filter/.map on them.
   const [submissions, setSubmissions] = useState([]);
+  const [subjects, setSubjects] = useState([]);
 
-  // Load feedback once the user is inside the app. (AdminPortal loads its
-  // own users/subjects/feedback, so it doesn't depend on this.)
+  // Load feedback + the live subject/faculty list once the user is inside
+  // the app. Subjects are fetched here (not just hardcoded) because the
+  // HOD can reassign which faculty teach which subject each semester from
+  // the Admin portal, so the Student portal needs the current list, not a
+  // frozen one. (AdminPortal loads its own users/subjects/feedback, so it
+  // doesn't depend on this.)
   useEffect(() => {
     if (stage !== "app" || !currentUser) return;
 
-    api
-      .fetchFeedback()
-      .then((rows) => setSubmissions(Array.isArray(rows) ? rows.map(normalizeFeedback) : []))
-      .catch((err) => console.error("Could not load feedback:", err));
+    Promise.all([api.fetchFeedback(), api.fetchSubjects()])
+      .then(([feedbackRows, subjectRows]) => {
+        setSubmissions(Array.isArray(feedbackRows) ? feedbackRows.map(normalizeFeedback) : []);
+        setSubjects(Array.isArray(subjectRows) ? subjectRows : []);
+      })
+      .catch((err) => console.error("Could not load data:", err));
   }, [stage, currentUser]);
 
   function handleLoginSuccess(user) {
@@ -56,6 +67,7 @@ function App() {
   function handleLogout() {
     setCurrentUser(null);
     setSubmissions([]);
+    setSubjects([]);
     setStage("login");
   }
 
@@ -90,6 +102,7 @@ function App() {
         user={currentUser}
         onLogout={handleLogout}
         submissions={submissions}
+        subjects={subjects}
         onSubmitFeedback={handleSubmitFeedback}
       />
     );

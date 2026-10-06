@@ -1,5 +1,7 @@
+import { COMMENT_FIELDS, categoryScores, submissionScore, formatScore } from "../data";
+
 // (3c) Props — this component holds no state of its own; it receives the
-// feedback history array from its parent (StudentDashboard) as a prop,
+// feedback history array from its parent (StudentPortal) as a prop,
 // demonstrating two components sharing data.
 // (3e) Iterative rendering using map() again, over a different data source.
 function FeedbackHistory({ history }) {
@@ -13,8 +15,20 @@ function FeedbackHistory({ history }) {
       <ul>
         {history.map((entry, index) => (
           <li key={index} className="history-item">
-            <strong>{entry.faculty}</strong> ({entry.subject}) — {entry.rating}/5
-            <p>{entry.comments}</p>
+            <strong>{entry.faculty}</strong> ({entry.subject}) — overall {entry.overallRating}/5,
+            average {formatScore(submissionScore(entry))}/5
+            <div className="chip-row">
+              {categoryScores([entry]).map((c) => (
+                <span className="chip" key={c.key}>
+                  {c.title}: {formatScore(c.avg)}
+                </span>
+              ))}
+            </div>
+            {COMMENT_FIELDS.filter((field) => entry[field.key]).map((field) => (
+              <p key={field.key}>
+                <strong>{field.short}:</strong> {entry[field.key]}
+              </p>
+            ))}
           </li>
         ))}
       </ul>

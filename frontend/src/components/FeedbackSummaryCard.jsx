@@ -1,10 +1,10 @@
 // (2b) React Functional Component
 // (2d) Conditional Rendering — shows an empty-state message until feedback
 // has actually been submitted, then switches to the filled summary view.
-function FeedbackSummaryCard({ faculty, subject, comments, status }) {
+function FeedbackSummaryCard({ faculty, subject, average, overallRating, strengths, status }) {
   // (2e) Displaying String Literals
   const summaryHeading = "Feedback Summary";
-  const noFeedbackText = "No feedback submitted yet. Please fill the form above.";
+  const noFeedbackText = "No feedback submitted yet. Choose a subject under Give Feedback to get started.";
   const thankYouText = "Thank you for helping us improve teaching quality!";
 
   if (status !== "Submitted") {
@@ -26,8 +26,16 @@ function FeedbackSummaryCard({ faculty, subject, comments, status }) {
         <strong>Subject:</strong> {subject}
       </p>
       <p>
-        <strong>Comments:</strong> {comments}
+        <strong>Overall rating:</strong> {overallRating} / 5
       </p>
+      <p>
+        <strong>Average score:</strong> {average} / 5
+      </p>
+      {strengths && (
+        <p>
+          <strong>Strengths you noted:</strong> {strengths}
+        </p>
+      )}
       <p className="thank-you-text">{thankYouText}</p>
     </div>
   );
