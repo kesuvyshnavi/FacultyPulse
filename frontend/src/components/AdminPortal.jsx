@@ -31,7 +31,7 @@ import Sidebar from "./Sidebar";
 import StatCard from "./StatCard";
 import PasswordSettingsPanel from "./PasswordSettingsPanel";
 import CategoryBars from "./CategoryBars";
-
+import usePersistentState from "../usePersistentState";
 const NAV_ITEMS = [
   { key: "overview", label: "Dashboard", icon: LayoutDashboard },
   { key: "faculty", label: "Manage Faculty", icon: Users },
@@ -51,8 +51,7 @@ function yearsFor(program) {
 // Faculty and Manage Students are where existing accounts are reviewed,
 // edited, and removed.
 function AdminPortal({ user, onLogout }) {
-  const [tab, setTab] = useState("overview");
-  const [users, setUsers] = useState([]);
+  const [tab, setTab] = usePersistentState(`fp-tab-${user.id}`, "overview");
   const [subjects, setSubjects] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);

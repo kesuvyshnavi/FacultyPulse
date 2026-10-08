@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   LayoutDashboard,
   MessageCircle,
@@ -7,6 +6,7 @@ import {
   Users,
   TrendingUp,
   BookOpen,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import {
   FEEDBACK_CATEGORIES,
@@ -16,14 +16,17 @@ import {
   overallRatingAverage,
   formatScore,
 } from "../data";
+import usePersistentState from "../usePersistentState";
 import Sidebar from "./Sidebar";
 import StatCard from "./StatCard";
 import CategoryBars from "./CategoryBars";
+import PasswordSettingsPanel from "./PasswordSettingsPanel";
 
 const NAV_ITEMS = [
   { key: "overview", label: "Dashboard", icon: LayoutDashboard },
   { key: "comments", label: "Comments", icon: MessageCircle },
   { key: "reports", label: "Reports", icon: FileBarChart },
+  { key: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
 function sentimentFromRating(rating) {
@@ -37,7 +40,8 @@ function sentimentFromRating(rating) {
 // App.jsx, filtered down to feedback aimed at this logged-in faculty
 // member, using the same category structure the students filled in.
 function FacultyPortal({ user, onLogout, submissions }) {
-  const [tab, setTab] = useState("overview");
+  // Remembered across page refresh.
+  const [tab, setTab] = usePersistentState(`fp-tab-${user.id}`, "overview");
 
   const myFeedback = submissions.filter((s) => s.faculty === user.name);
   const totalResponses = myFeedback.length;
@@ -221,6 +225,8 @@ function FacultyPortal({ user, onLogout, submissions }) {
             )}
           </>
         )}
+
+        {tab === "settings" && <PasswordSettingsPanel user={user} />}
       </main>
     </div>
   );

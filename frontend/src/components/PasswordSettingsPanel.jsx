@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { api } from "../api";
+import PasswordInput from "./PasswordInput";
 
-// Available any time from Settings in every portal — not just forced on
-// first login. Same API call as ChangePassword.jsx, different context.
+// Available any time from Settings in every portal (Student, Faculty,
+// Admin). The current password must be entered before a new one is saved.
 function PasswordSettingsPanel({ user }) {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -16,19 +18,28 @@ function PasswordSettingsPanel({ user }) {
     setError("");
     setSuccess("");
 
+    if (currentPassword === "") {
+      setError("Enter your current password.");
+      return;
+    }
     if (newPassword.length < 4) {
-      setError("Password must be at least 4 characters.");
+      setError("New password must be at least 4 characters.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setError("New password must be different from the current one.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Passwords don't match.");
+      setError("New passwords don't match.");
       return;
     }
 
     setSaving(true);
     try {
-      await api.changePassword(user.id, newPassword);
+      await api.changePassword(user.id, currentPassword, newPassword);
       setSuccess("Password updated successfully.");
+      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
@@ -45,20 +56,28 @@ function PasswordSettingsPanel({ user }) {
         Change password
       </h3>
       <form onSubmit={handleSubmit} className="feedback-form">
-        <label htmlFor="settingsNewPassword">New password</label>
-        <input
-          id="settingsNewPassword"
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
+        <label htmlFor="settingsCurrentPassword">Current password</label>
+        <PasswordInput
+          id="settingsCurrentPassword"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          autoComplete="current-password"
         />
 
-        <label htmlFor="settingsConfirmPassword">Confirm password</label>
-        <input
+        <label htmlFor="settingsNewPassword">New password</label>
+        <PasswordInput
+          id="settingsNewPassword"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          autoComplete="new-password"
+        />
+
+        <label htmlFor="settingsConfirmPassword">Confirm new password</label>
+        <PasswordInput
           id="settingsConfirmPassword"
-          type="password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
+          autoComplete="new-password"
         />
 
         {error && <p className="form-error">{error}</p>}

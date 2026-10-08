@@ -24,8 +24,13 @@ export const api = {
   login: (id, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ id, password }) }),
 
-  changePassword: (id, newPassword) =>
-    request("/auth/change-password", { method: "POST", body: JSON.stringify({ id, newPassword }) }),
+  // The server checks currentPassword against the stored hash before
+  // allowing the change.
+  changePassword: (id, currentPassword, newPassword) =>
+    request("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ id, currentPassword, newPassword }),
+    }),
 
   fetchUsers: () => request("/users"),
 

@@ -9,9 +9,11 @@ import {
   ArrowLeft,
   ChevronRight,
   CircleUserRound,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { api } from "../api";
 import { reviewKey, submissionScore, formatScore } from "../data";
+import usePersistentState from "../usePersistentState";
 import Sidebar from "./Sidebar";
 import StatCard from "./StatCard";
 import FacultyInfoCard from "./FacultyInfoCard";
@@ -19,11 +21,13 @@ import FeedbackSummaryCard from "./FeedbackSummaryCard";
 import FeedbackForm from "./FeedbackForm";
 import FacultyDirectory from "./FacultyDirectory";
 import FeedbackHistory from "./FeedbackHistory";
+import PasswordSettingsPanel from "./PasswordSettingsPanel";
 
 const NAV_ITEMS = [
   { key: "overview", label: "Dashboard", icon: LayoutDashboard },
   { key: "feedback", label: "Give Feedback", icon: MessageSquarePlus },
   { key: "history", label: "My Feedback", icon: HistoryIcon },
+  { key: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
 // Student Portal — the main functional dashboard component. It owns the
@@ -35,7 +39,8 @@ const NAV_ITEMS = [
 // finishes, the answers are lifted to App.jsx via onSubmitFeedback, which
 // is what makes them show up for real in the Faculty and Admin portals.
 function StudentPortal({ user, onLogout, submissions, onSubmitFeedback }) {
-  const [tab, setTab] = useState("overview");
+  // Remembered across page refresh.
+  const [tab, setTab] = usePersistentState(`fp-tab-${user.id}`, "overview");
 
   const [subjects, setSubjects] = useState([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
@@ -133,10 +138,12 @@ function StudentPortal({ user, onLogout, submissions, onSubmitFeedback }) {
           </div>
         </div>
 
-        {loadingSubjects && <p className="panel-muted">Loading subjects...</p>}
-        {subjectsError && <p className="form-error">{subjectsError}</p>}
+        {tab === "settings" && <PasswordSettingsPanel user={user} />}
 
-        {!loadingSubjects && !subjectsError && (
+        {tab !== "settings" && loadingSubjects && <p className="panel-muted">Loading subjects...</p>}
+        {tab !== "settings" && subjectsError && <p className="form-error">{subjectsError}</p>}
+
+        {tab !== "settings" && !loadingSubjects && !subjectsError && (
           <>
             {tab === "overview" && (
               <>

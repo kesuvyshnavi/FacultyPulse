@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { KeyRound, ArrowLeft } from "lucide-react";
 import { api } from "../api";
+import PasswordInput from "./PasswordInput";
 
 // (3d) Forms — a second, distinct form: setting a new password after the
-// first login with the HOD-assigned default password.
+// first login with the HOD-assigned default password. The current
+// (default) password must be entered again to confirm it's really you.
 function ChangePassword({ user, onPasswordChanged, onCancel }) {
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -13,19 +16,27 @@ function ChangePassword({ user, onPasswordChanged, onCancel }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    if (currentPassword === "") {
+      setError("Enter your current (default) password.");
+      return;
+    }
     if (newPassword.length < 4) {
-      setError("Password must be at least 4 characters.");
+      setError("New password must be at least 4 characters.");
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setError("New password must be different from the current one.");
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError("Passwords don't match.");
+      setError("New passwords don't match.");
       return;
     }
 
     setError("");
     setSaving(true);
     try {
-      await api.changePassword(user.id, newPassword);
+      await api.changePassword(user.id, currentPassword, newPassword);
       onPasswordChanged();
     } catch (err) {
       setError(err.message);
@@ -42,27 +53,36 @@ function ChangePassword({ user, onPasswordChanged, onCancel }) {
         </div>
         <h1>Set a new password</h1>
         <p className="auth-subtitle">
-          Welcome, {user.name}. This is your first login — choose a password
-          only you know.
+          Welcome, {user.name}. This is your first login — enter the password
+          you just signed in with, then choose one only you know.
         </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
+          <label htmlFor="currentPassword">Current password</label>
+          <PasswordInput
+            id="currentPassword"
+            placeholder="The password you just used to log in"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+
           <label htmlFor="newPassword">New password</label>
-          <input
+          <PasswordInput
             id="newPassword"
-            type="password"
             placeholder="Enter a new password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            autoComplete="new-password"
           />
 
-          <label htmlFor="confirmPassword">Confirm password</label>
-          <input
+          <label htmlFor="confirmPassword">Confirm new password</label>
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             placeholder="Re-enter the new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
           />
 
           {error && <p className="auth-error">{error}</p>}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LogIn, ShieldCheck } from "lucide-react";
 import { api } from "../api";
+import PasswordInput from "./PasswordInput";
 
 // (3d) Forms — the login form, with a controlled submit handler that now
 // calls the real backend instead of checking an in-memory array.
@@ -38,18 +39,18 @@ function Login({ onLoginSuccess }) {
           <input
             id="userId"
             type="text"
-            placeholder="e.g. 21A91A0501"
+            placeholder="e.g. 24001A0501"
             value={id}
             onChange={(e) => setId(e.target.value)}
           />
 
           <label htmlFor="password">Password</label>
-          <input
+          <PasswordInput
             id="password"
-            type="password"
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
           />
 
           {error && <p className="auth-error">{error}</p>}
