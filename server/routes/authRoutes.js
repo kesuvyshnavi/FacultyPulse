@@ -31,13 +31,33 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Used both by the forced first-login flow and by the optional "Change
-// password" panel available any time from inside the app.
+// Used both by the forced first-login flow and by the "Change password"
+// panel in Settings. The current password must be correct before the new
+// one is saved.
 router.post("/change-password", async (req, res) => {
   try {
-    const { id, newPassword } = req.body;
+    const { id, currentPassword, newPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({ error: "Enter your current password." });
+    }
     if (!newPassword || newPassword.length < 4) {
       return res.status(400).json({ error: "Password must be at least 4 characters." });
+    }
+
+    const [rows] = await db.query("SELECT password_hash FROM users WHERE id = ?", [id]);
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const currentIsCorrect = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!currentIsCorrect) {
+      return res.status(401).json({ error: "Current password is incorrect." });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: "New password must be different from the current one." });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);
